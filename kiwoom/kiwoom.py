@@ -3,6 +3,7 @@ from PyQt5.QAxContainer import *
 from PyQt5.QtCore import *
 from config.errorCode import *
 from PyQt5.QtTest import *
+from config.kiwoomType import *
 
 
 class Kiwoom(QAxWidget):
@@ -10,6 +11,9 @@ class Kiwoom(QAxWidget):
         super().__init__()
 
         print("kiwoom 클래스 입니다.")
+
+        self.realType = RealType()
+
 
         ###### eventloop 모음
         self.login_event_loop = None
@@ -62,7 +66,8 @@ class Kiwoom(QAxWidget):
         self.read_code()
         self.screen_number_setting()
 
-        self.dynamicCall("SetRealReg(QString, QString, QSting, QString", self.screen_start_stop_real, '')
+        self.dynamicCall("SetRealReg(QString, QString, QSting, QString", self.screen_start_stop_real, '',self.realType.REALTYPE['장시작시간']['장운영구분'],"0")
+
 
 
         # 종목 분석용, 임시용으로 실행
@@ -494,9 +499,22 @@ class Kiwoom(QAxWidget):
         print(self.portfolio_stock_dict)
 
 
-    def real_event_slots(self, sCode, sCodeType, sRealData):
-        print(sCode)
+    def real_event_slots(self, sCode, sRealType, sRealData):
 
+        if sRealType == "장시작시간":
+            fid = self.realType.REALTYPE[sRealType]['장운영구분']
+            value = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
 
+            if value == "0":
+                print("장 시작 전")
+
+            elif value == "3":
+                print("장 시작")
+                
+            elif value == "2":
+                print("장 종료, 동시호가로 넘어감")
+
+            elif value == "4":
+                print("3시30분 장 종료")
 
 
