@@ -42,6 +42,7 @@ class Kiwoom(QAxWidget):
         self.account_stock_dict = {}
         self.not_account_stock_dict = {}
         self.portfolio_stock_dict = {}
+        self.jango_dict = {}
         ###########################
 
         ###### 종복 문석 용
@@ -50,6 +51,7 @@ class Kiwoom(QAxWidget):
 
         self.get_ocx_instance()
         self.event_slots()
+        self.real_event_slots()
 
         self.signal_login_commConnect()
 
@@ -68,7 +70,11 @@ class Kiwoom(QAxWidget):
 
         self.dynamicCall("SetRealReg(QString, QString, QSting, QString", self.screen_start_stop_real, '',self.realType.REALTYPE['장시작시간']['장운영구분'],"0")
 
-
+        for code in self.portfolio_stock_dict.keys():
+            screen_num = self.portfolio_stock_dict[code]['스크린번호']
+            fids = self.realType.REALTYPE['주식체결']['체결시간']
+            self.dynamicCall("SetRealReg(QString, QString, QSting, QString", screen_num, code, fids, "1")
+            print("실시간 등록 : %s, 스크린번호 : %s  , 번호 : %s " %  (code, screen_num, fids))
 
         # 종목 분석용, 임시용으로 실행
         #self.calculator_fnc()
@@ -84,7 +90,7 @@ class Kiwoom(QAxWidget):
 
     def real_event_slots(self):
         self.OnReceiveRealData.connect(self.realdata_slot)
-
+        self.OnReceiveChejanData.connect(self.chejan_slot)
 
     def login_slot(self, errCode):
         print(errCode)
@@ -498,7 +504,110 @@ class Kiwoom(QAxWidget):
 
         print(self.portfolio_stock_dict)
 
+    def realdata_slot(self, sCode, sRealType, sRealData):
+        if sRealType == "장시작시간":
+            fid = self.realType.REALTYPE[sRealType]['장운영구분']
+            value = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
 
+            if value == "0":
+                print("장 시작 전")
+
+            elif value == "3":
+                print("장 시작")
+
+            elif value == "2":
+                print("장 종료, 동시호가로 넘어감")
+
+            elif value == "4":
+                print("3시30분 장 종료")
+        elif sRealType == "주식체결":
+            a = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['체결시간']) #HHMMSS
+            b = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['현재가'])   # (+ -) 2500
+            b = abs(int(b))
+
+            c = self.dynamicCall("GetCommRealData(QSting, int)", sCode,self.realType.REALTYPE[sRealType]['전일대비'])  #
+            c = abs(int(c))
+            d = self.dynamicCall("GetCommRealData(QSting, int)", sCode,self.realType.REALTYPE[sRealType]['등락율'])
+            d = float(d)
+            e = self.dynamicCall("GetCommRealData(QSting, int)", sCode,self.realType.REALTYPE[sRealType]['(최우선)매도호가'])
+            e = abs(int(e))
+
+            f = self.dynamicCall("GetCommRealData(QSting, int)", sCode,self.realType.REALTYPE[sRealType]['(최우선)매수호가'])
+            f = abs(int(f))
+
+            g = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['거래량'])
+            g = abs(int(g))
+
+            h = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['누적거래량'])
+            h = abs(int(h))
+
+            i = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['고가'])
+            i = abs(int(i))
+
+            j = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['시가'])
+            j = abs(int(j))
+
+            k = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['저가'])
+            k = abs(int(k))
+
+            if sCode in self.portfolio_stock_dict:
+                self.portfolio_stock_dict.update({sCode:{}})
+
+            self.portfolio_stock_dict[sCode].update({"체결시간", a})
+            self.portfolio_stock_dict[sCode].update({"현재가", b})
+            self.portfolio_stock_dict[sCode].update({"전일대비", c})
+            self.portfolio_stock_dict[sCode].update({"등락율", d})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매도호가", e})
+            self.portfolio_stock_dict[sCode].update({"(최우선)매수호가", f})
+            self.portfolio_stock_dict[sCode].update({"거래량", g})
+            self.portfolio_stock_dict[sCode].update({"누적거래량", h})
+            self.portfolio_stock_dict[sCode].update({"고가", i})
+            self.portfolio_stock_dict[sCode].update({"시가", j})
+            self.portfolio_stock_dict[sCode].update({"저가", k})
+
+            print(self.portfolio_stock_dict[sCode])
+
+
+            # 계좌전고평가내역에 있고 오늘 산 잔고에는 없을 경우
+            if sCode in self.account_stock_dict.key() and sCode not in self.jango_dict.keys():
+                print("%s %s" % ("신규매도를 한다", sCode))
+
+            # 오늘 산 잔고에 있을 경우
+            elif sCode in self.jango_dict.keys():
+                print("%s %s " % ("신규매도를 한다2", sCode))
+
+            # 등록율이 2.0% 이상이고 오늘 산 잔고에 없을 경우
+            elif d > 2.0 and sCode not in self.jango_dict:
+                print("%s %s" % ("신규매수를 한다. ", sCode))
+
+            not_meme_list = list(self.not_account_stock_dict)
+            for order_num in not_meme_list:
+                code = self.not_account_stock_dict[order_num]["종목코드"]
+                meme_price = self.not_account_stock_dict[order_num]['주문가격']
+                not_quantity = self.not_account_stock_dict[order_num]['미체결수량']
+                meme_gubun = self.not_account_stock_dict[order_num]['매도수구분']
+
+                if meme_gubun == "매수" and not_quantity > 0 and e > meme_price:
+                    print("%s %s " % ("매수취소 한다"), sCode)
+
+                elif not_quantity == 0 :
+                    del self.not_account_stock_dict[order_num]
+
+
+    def chejan_slot(self, sGubun, nItemCnt, sFIdList):
+        
+        if int(sGubun) == "0":
+            print("주문체결")
+            
+        elif int(sGubun) == "1":
+            print("잔고")
+
+            ''' 실'''
+
+
+
+
+'''
     def real_event_slots(self, sCode, sRealType, sRealData):
 
         if sRealType == "장시작시간":
@@ -510,11 +619,11 @@ class Kiwoom(QAxWidget):
 
             elif value == "3":
                 print("장 시작")
-                
+
             elif value == "2":
                 print("장 종료, 동시호가로 넘어감")
 
             elif value == "4":
                 print("3시30분 장 종료")
-
+'''
 

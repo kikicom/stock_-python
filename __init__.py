@@ -8,5 +8,5 @@ class Main():
         Ui_class()
 
 
-if __name__ == "__ma in__":
+if __name__ == "__main__":
     Main()
