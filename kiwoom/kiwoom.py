@@ -10,14 +10,12 @@ from config.kiwoomType import *
 class Kiwoom(QAxWidget):
     def __init__(self):
         super().__init__()
-
         print("kiwoom 클래스 입니다.")
 
         self.realType = RealType()
 
-
         ###### eventloop 모음
-        self.login_event_loop = None
+        self.login_event_loop = QEventLoop()                # 로그인 요청용 이벤트 루프
         self.detail_account_info_event_loop = QEventLoop()
         self.calculator_event_loop = QEventLoop()
         ###########################
@@ -25,13 +23,13 @@ class Kiwoom(QAxWidget):
         ####### 스크린번호 모음
         self.screen_my_info = "2000"
         self.screen_calculation_stock = "4000"
-        self.screen_real_stock = "5000" #종목별로 할당할 스크린 번호
-        self.screen_meme_stock = "6000" #종목별 할당할 주문용 스크린 번호
+        self.screen_real_stock = "5000"         #종목별로 할당할 스크린 번호
+        self.screen_meme_stock = "6000"         #종목별 할당할 주문용 스크린 번호
         self.screen_start_stop_real = "1000"
         #########################
 
         ###### 변수 모음
-        self.account_num = None
+        self.account_num = None                 # 계좌번호
         ###########################
 
         ###### 계좌 관련 변수
@@ -50,14 +48,15 @@ class Kiwoom(QAxWidget):
         self.calcul_data = []
         ##################
 
-        self.get_ocx_instance()
-        self.event_slots()
+        self.get_ocx_instance()             # OCX 방식을 파이썬에 사용할 수 있게 반환해 주는 함수 실행
+        self.event_slots()                  # 키움과 연결하기 위한 시그널 / 슬롯 모음
+        self.signal_login_commConnect()     # 로그인 요청 함수 포함
+
+        self.get_account_info()             # 계좌번호 가져오기
+
         self.real_event_slots()
 
-        self.signal_login_commConnect()
 
-        # 계좌번호 가져오기
-        self.get_account_info()
         # 예수금 가져오기
         self.detail_account_info()
         # 계좌평가잔고내역요청
@@ -82,13 +81,12 @@ class Kiwoom(QAxWidget):
 
 
     def get_ocx_instance(self):
-        self.setControl("KHOPENAPI.KHOpenAPICtrl.1")
+        self.setControl("KHOPENAPI.KHOpenAPICtrl.1")        # 레지스트리에 저장된 API 모듈 불러오기
 
     def event_slots(self):
-        self.OnEventConnect.connect(self.login_slot)
-        # 예수금 가져오기 EVENT
-        self.OnReceiveTrData.connect(self.trdata_slot)
-        self.OnReceiveMsg.connect(self.msg_slot)
+        self.OnEventConnect.connect(self.login_slot)        # 로그인 관련 이벤트
+        self.OnReceiveTrData.connect(self.trdata_slot)      # 예수금 가져오기 EVENT
+        self.OnReceiveMsg.connect(self.msg_slot)            # 메시지
 
 
     def real_event_slots(self):
@@ -96,25 +94,21 @@ class Kiwoom(QAxWidget):
         self.OnReceiveChejanData.connect(self.chejan_slot)
 
     def login_slot(self, errCode):
-        print(errCode)
-        print(errors(errCode))
+        print(errors(errCode)[1])
 
-        self.login_event_loop.exit()
+        self.login_event_loop.exit()                        # 로그인 처리가 완료됐으면 이벤트 루프를 종료한다.
 
     #계좌번호 가져오기
     def get_account_info(self):
-        account_list = self.dynamicCall("GetLoginInfo(String)","ACCLIST")
-        #계좌번호 232424; 세미콜론 같이 나옴
-        self.account_num = account_list.split(';')[0]
+        account_list = self.dynamicCall("GetLoginInfo(String)","ACCLIST")   # 계좌번호 반환
+        self.account_num = account_list.split(';')[0]                       # a;b;c ->[a, b, c]
         print("나의 보유 계좌번호  %s" % self.account_num)
 
 
     # 수동 로그인설정인 경우 로그인창을 출력해서 로그인을 시도하거나 자동로그인 설정인 경우 로그인창 출력없이 로그인을 시도합니다.
     def signal_login_commConnect(self):
-        self.dynamicCall("CommConnect()")
-
-        self.login_event_loop = QEventLoop()
-        self.login_event_loop.exec_()
+        self.dynamicCall("CommConnect()")                   # 로그인 요청 시그널
+        self.login_event_loop.exec_()                       # 이벤트 루프 실행
 
 
     def detail_account_info(self):
