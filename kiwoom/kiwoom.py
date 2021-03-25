@@ -60,7 +60,7 @@ class Kiwoom(QAxWidget):
         self.get_account_info()                 # 계좌번호 가져오기
         self.detail_account_info()              # 예수금 가져오기
         self.detail_account_mystock()           # 계좌평가잔고내역 가져오기
-        #self.calculator_fnc()                  # 수집
+        self.calculator_fnc()                  # 수집
         QTimer.singleShot(5000, self.not_concluded_account)     #5초 뒤에 미체결 종목들 가져오기 실행
         ######################################################
 
