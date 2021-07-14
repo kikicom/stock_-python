@@ -10,15 +10,17 @@ from config.log_class import *      # 로그 파일 임포트
 class Kiwoom(QAxWidget):
     def __init__(self):
         super().__init__()
+        print("===============  Kiwoom() class start.============== ")
+
         self.realType   = RealType()
         self.logging    = Logging()     # 로그 인스턴스
 
         self.logging.logger.debug("Kiwoom() class start.")
 
         ###### eventloop 모음
-        self.login_event_loop = QEventLoop()                # 로그인 요청용 이벤트 루프
-        self.detail_account_info_event_loop = QEventLoop()  # 이벤트 루프를 전역변수로 선언
-        self.calculator_event_loop = QEventLoop()
+        self.login_event_loop               = QEventLoop()      # 로그인 요청용 이벤트 루프
+        self.detail_account_info_event_loop = QEventLoop()      # 예수금 요청용 이벤트 루프
+        self.calculator_event_loop          = QEventLoop()
         ###########################
         
         ###### 계좌 관련된 변수
@@ -32,15 +34,18 @@ class Kiwoom(QAxWidget):
         self.account_pwd = "0000"                #
         self.total_profit_loss_money = 0        # 총평가손익금액
         self.total_profit_loss_rate  = 0        # 총수익률(%)
-        self.portfolio_stock_dict = {}
         self.jango_dict = {}
         ###########################
-        
+
         ###### 전체 종목 관리
         self.all_stock_dict = {}
         #########################
 
-        ###### 종복 문석 용
+        ###### 종목 정보 가져오기
+        self.portfolio_stock_dict = {}
+        ###########################
+
+        ###### 종목 분석 용
         self.calcul_data = []
         ##################
 
@@ -58,9 +63,8 @@ class Kiwoom(QAxWidget):
         self.real_event_slots()                 # 실시간 이벤트 시그널 / 슬롯 연결
         self.signal_login_commConnect()         # 로그인 요청 함수 포함
         self.get_account_info()                 # 계좌번호 가져오기
-        self.detail_account_info()              # 예수금 가져오기
+        self.detail_account_info()              # 예수금 요청 시그널 포함
         self.detail_account_mystock()           # 계좌평가잔고내역 가져오기
-        self.calculator_fnc()                  # 수집
         QTimer.singleShot(5000, self.not_concluded_account)     #5초 뒤에 미체결 종목들 가져오기 실행
         ######################################################
 
@@ -72,12 +76,12 @@ class Kiwoom(QAxWidget):
         QTest.qWait(5000)
 
         #실시간 수신 관련 함수
-        self.dynamicCall("SetRealReg(QString, QString, QSting, QString", self.screen_start_stop_real, '',self.realType.REALTYPE['장시작시간']['장운영구분'],"0")
+        self.dynamicCall("SetRealReg(QString, QString, QSting, QString)", self.screen_start_stop_real, '', self.realType.REALTYPE['장시작시간']['장운영구분'], "0")
 
         for code in self.portfolio_stock_dict.keys():
             screen_num = self.portfolio_stock_dict[code]['스크린번호']
             fids = self.realType.REALTYPE['주식체결']['체결시간']
-            self.dynamicCall("SetRealReg(QString, QString, QSting, QString", screen_num, code, fids, "1")
+            self.dynamicCall("SetRealReg(QString, QString, QSting, QString)", screen_num, code, fids, "1")
             self.logging.logger.debug("실시간 등록 : %s, 스크린번호 : %s  , 번호 : %s " %  (code, screen_num, fids))
 
        # self.not_concluded_account() # 미체결 요청하기
@@ -113,28 +117,31 @@ class Kiwoom(QAxWidget):
     def detail_account_info(self, sPrevNext= "0"):
 
         self.logging.logger.debug("======예수금을 요청하는 부분=================== 시작")
+
         #Open API 조회 함수 입력값을 설정합니다.
         self.dynamicCall("SetInputValue(String, String)", "계좌번호", self.account_num)
-        self.dynamicCall("SetInputValue(String, String)", "비밀번호", "0000")
-        self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", self.account_pwd)
-        self.dynamicCall("SetInputValue(String, String)", "조회구분", "1")  #추정
+        self.dynamicCall("SetInputValue(String, String)", "비밀번호", self.account_pwd)
+        self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", "00")
+        self.dynamicCall("SetInputValue(String, String)", "조회구분", "1")      #추정
         # Open API 조회 함수를 호출해서 전문을 서버로 전송합니다.
-        self.dynamicCall("CommRqData(String, String, int, String)", "예수금상세현황요청" ,  "opw00001"	,  sPrevNext ,  self.screen_my_info)
+        self.dynamicCall("CommRqData(String, String, int, String)", "예수금상세현황요청" ,  "opw00001"	,  sPrevNext,  self.screen_my_info)
 
         self.detail_account_info_event_loop.exec_()
 
     def detail_account_mystock(self, sPrevNext="0"):
-        print("======== 계좌평가잔고내역요청 연속조회  %s" % sPrevNext)
-        self.dynamicCall("SetInputValue(String, String)","계좌번호", self.account_num)
-        self.dynamicCall("SetInputValue(String, String)", "비밀번호", "0000")
-        self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", "00")
-        self.dynamicCall("SetInputValue(String, String)", "조회구분", "1")
+        print("======== 계좌평가잔고내역요청 연속조회  %s  ====  시작" % sPrevNext)
+        self.dynamicCall("SetInputValue(String, String)", "계좌번호", self.account_num)
+        self.dynamicCall("SetInputValue(String, String)", "비밀번호", self.account_pwd)
+        self.dynamicCall("SetInputValue(String, String)", "비밀번호입력매체구분", "00")   # 비밀번호입력매체구분 = 00
+        self.dynamicCall("SetInputValue(String, String)", "조회구분", "1")              # 1:합산, 2:개별
 
         self.dynamicCall("CommRqData(String, String, int, String)", "계좌평가잔고내역요청", "opw00018", sPrevNext, self.screen_my_info)
 
         self.detail_account_info_event_loop.exec_()
 
     def not_concluded_account(self, sPrevNext = "0"):
+
+        print("======== 미체결 종목 요청 ========  시작")
         self.dynamicCall("SetInputValue(String, String)", "계좌번호", self.account_num)
         self.dynamicCall("SetInputValue(String, String)", "체결구부", "1")
         self.dynamicCall("SetInputValue(String, String)", "매매구분", "0")
@@ -146,15 +153,15 @@ class Kiwoom(QAxWidget):
 
         if sRQName == "예수금상세현황요청":
             deposit = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "예수금" )
-            self.deposit = int(deposit)
-            use_money = float(self.deposit) * self.use_money_percent
+            self.deposit = int(deposit)                                 # 예수금
+            use_money = float(self.deposit) * self.use_money_percent    # 예수금에 50%만 사용
             self.use_money = int(use_money)
-            self.use_money = self.use_money / 4
+            self.use_money = self.use_money / 4                         # 사용금액 4종목으로 나눔
+            output_deposit = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "출금가능금액" )
+            self.output_deposit = int(output_deposit)
+            self.logging.logger.debug("예수금 : %s   ====   출금가능금액 %s" % (self.deposit , self.use_money , self.output_deposit ))
 
-            self.output_deposit = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "출금가능금액" )
-
-            self.logging.logger.debug("예수금 : %s   ====   출금가능금액 %s   ====  출금가능금액 %s   " % (self.deposit , self.use_money , self.output_deposit ))
-
+            self.stop_screen_cancel(self.screen_my_info)
             self.detail_account_info_event_loop.exit()
             self.logging.logger.debug("======예수금을 요청하는 부분=================== 종료")
 
@@ -166,8 +173,7 @@ class Kiwoom(QAxWidget):
             self.total_buy_money            = int(total_buy_money)
             self.total_profit_loss_money    = int(total_profit_loss_money)
             self.total_profit_loss_rate     = float(total_profit_loss_rate)
-
-            self.logging.logger.debug("계좌평가잔고내역요청 싱글데이터(매도금액, 잃은금액, 수익률) : %s -  %s - %s " % (self.total_buy_money, self.total_profit_loss_money,  self.total_profit_loss_rate))
+            self.logging.logger.debug("계좌평가잔고내역요청 싱글데이터(총매입금액, 총평가손익금액, 총수익률(%)) : %s -  %s - %s " % (self.total_buy_money, self.total_profit_loss_money,  self.total_profit_loss_rate))
 
             # 20개까지 조회 가능
             rows = self.dynamicCall("GetRepeatCnt(QString, QString", sTrCode, sRQName)
@@ -176,12 +182,14 @@ class Kiwoom(QAxWidget):
                 code                = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "종목번호")
                 code_nm             = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "종목명")
                 stock_quantity      = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "보유수량")
-                learn_rate          = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "수익률(%)")
                 buy_price           = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "매입가")
+                learn_rate          = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "수익률(%)")
                 current_price       = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "현재가")
                 total_chegual_price = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "매입금액")
                 possible_quantity   = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "매매가능수량")
                 code = code.strip()[1:]
+
+                self.logging.logger.debug("종목번호 : %s - 종목명 : %s - 보유수량 : %s - 매입가 : %s - 수익률 : %s - 현재가 : %s" % (code, code_nm, stock_quantity, buy_price, learn_rate, current_price))
 
                 if code in self.account_stock_dict:
                     pass
@@ -207,15 +215,16 @@ class Kiwoom(QAxWidget):
                 cnt += 1
 
             self.logging.logger.debug("sPrevNext :  %s - row건수 : %s - 계좌 보유종목 건수 : %s" % (sPrevNext, rows , cnt))
-            self.logging.logger.debug("계좌에 가지고 있는 종목 : %s" % self.account_stock_dict)
+            self.logging.logger.debug("계좌에 가지고 있는 종목 : %s" % rows)
 
             if sPrevNext == "2":
                 self.detail_account_mystock(sPrevNext="2")
             else:
+                #self.stop_screen_cancel(self.screen_my_info)
                 self.detail_account_info_event_loop.exit()
 
         elif sRQName == "실시간미체결요청":
-            rows = self.dynamicCall("GetRepeatCnt(QString, QString", sTrCode, sRQName)
+            rows = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
 
             for i in range(rows):
                 code            = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, i, "종목코드")
@@ -260,10 +269,9 @@ class Kiwoom(QAxWidget):
         elif sRQName == "주식일봉차트조회":
 
             code    = self.dynamicCall("GetCommData(QString, QString, int, QString)", sTrCode, sRQName, 0, "종목코드")
-            cnt     = self.dynamicCall("GetRepeatCnt(QString, QString", sTrCode, sRQName)
+            cnt     = self.dynamicCall("GetRepeatCnt(QString, QString)", sTrCode, sRQName)
             code    = code.strip()
             # data = self.dynamicCall("GetCommDataEx(QString, QString)", sTrCode, sRQName)
-            self.logging.logger.debug("남은 일자 수  : %s" % cnt)
 
             for i in range(cnt): # 0...599
                 data = []
@@ -288,15 +296,14 @@ class Kiwoom(QAxWidget):
                 self.calcul_data.append(data.copy())
 
             if sPrevNext == "2":
-                self.day_kiwoom_db(code=code, sPrevNext= sPrevNext)
-
+                self.day_kiwoom_db(code=code, sPrevNext=sPrevNext)
             else:
                 self.logging.logger.debug("총 일수 %s" % len(self.calcul_data))
 
                 pass_success = False
 
                 # 120일 이평선을 그릴만큼의 데이터가 있는지 체크
-                if self.calcul_data == None or len(self.calcul_data)< 120:
+                if self.calcul_data == None or len(self.calcul_data) < 120:
                     pass_success = False
                 else:
                     # 120일 이평선의 최근 가격 구함
@@ -376,7 +383,7 @@ class Kiwoom(QAxWidget):
 
     def calculator_fnc(self):       # 종목 분석과 관련된 코드를 모아놓을 calculator 함수
         code_list = self.get_code_list_by_market("10") # 10 코스닥 갯수
-        self.logging.logger.debug("코스닥 갯수 %s" % len(code_list))
+        self.logging.logger.debug("====== 코스닥 갯수 %s " % len(code_list))
 
         for idx, code in enumerate(code_list):
             self.dynamicCall("DisconnectRealData(QString)", self.screen_calculation_stock)  # 스크린 연결 끊기
@@ -405,7 +412,7 @@ class Kiwoom(QAxWidget):
             lines = f.readlines()       # 파일에 있는 내용들이 모두 읽어와 진다.
             for line in lines:          # 줄바꿈된 내용릉이 한줄 씩 읽어와진다.
                 if line != "":
-                    ls = line.split("\t")   #["종목코드","종목명",""]
+                    ls = line.split("\t")   #["종목코드","종목명","현재가"]
 
                     stock_code = ls[0]
                     stock_name = ls[1]
@@ -461,7 +468,7 @@ class Kiwoom(QAxWidget):
                 self.portfolio_stock_dict[code].update({"스크린번호":str(self.screen_real_stock)})
                 self.portfolio_stock_dict[code].update({"주문용스크린번호": str(self.screen_meme_stock)})
 
-            elif code not in  self.portfolio_stock_dict.keys():
+            elif code not in self.portfolio_stock_dict.keys():
                 self.portfolio_stock_dict.update({code: {"스크린번호":str(self.screen_real_stock),"주문용스크린번호 ":str(self.screen_meme_stock)}})
 
             cnt += 1
@@ -471,8 +478,8 @@ class Kiwoom(QAxWidget):
     def realdata_slot(self, sCode, sRealType, sRealData):
 
         if sRealType == "장시작시간":
-            fid = self.realType.REALTYPE[sRealType]['장운영구분'] # (0:장시작전, 2:장종료전(20분), 3:장시작, 4,8:장종료(30분), 9:장마감)
-            value = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
+            fid     = self.realType.REALTYPE[sRealType]['장운영구분']    # (0:장시작전, 2:장종료전(20분), 3:장시작, 4,8:장종료(30분), 9:장마감)
+            value   = self.dynamicCall("GetCommRealData(QString, int)", sCode, fid)
 
             if value == "0":
                 self.logging.logger.debug("장 시작 전")
@@ -519,7 +526,7 @@ class Kiwoom(QAxWidget):
             k = self.dynamicCall("GetCommRealData(QSting, int)", sCode, self.realType.REALTYPE[sRealType]['저가'])
             k = abs(int(k))
 
-            if sCode in self.portfolio_stock_dict:
+            if sCode not in self.portfolio_stock_dict:
                 self.portfolio_stock_dict.update({sCode:{}})
 
             self.portfolio_stock_dict[sCode].update({"체결시간", a})
@@ -538,15 +545,15 @@ class Kiwoom(QAxWidget):
 
             # 계좌전고평가내역에 있고 오늘 산 잔고에는 없을 경우
             if sCode in self.account_stock_dict.key() and sCode not in self.jango_dict.keys():
-
                 self.logging.logger.debug("%s %s" % ("계좌전고평가내역 매도를 한다", sCode))
                 asd = self.account_stock_dict[sCode]
                 meme_rate = (b - asd['매입가']) / asd['매입가'] * 100
 
                 if asd['매매가능수량'] > 0 and (meme_rate > 5 or meme_rate < -5):
-                    order_success = self.doynamicCall("[SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)", ["신규매도"
-                                    , self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 2,
-                                    sCode, asd['매매가능수량'], 0, self.realType.SENDTYPE['거래구분']['시장가'], ""])
+                    order_success = self.doynamicCall(
+                        "[SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)"
+                        , ["신규매도", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 2
+                        ,sCode, asd['매매가능수량'], 0, self.realType.SENDTYPE['거래구분']['시장가'], ""])
 
                     if order_success == 0:
                         self.logging.logger.debug("계좌전고 매도주문 전달 성공")
@@ -561,31 +568,29 @@ class Kiwoom(QAxWidget):
                 meme_rate = (b - jd['매입단가']) / jd['매입단가'] * 100
 
                 if jd['주문가능수량'] > 0 and (meme_rate > 5 or meme_rate < -5):
-
                     order_success = self.dynamicCall(
                         "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
                         ["신규매도", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 2,
                          sCode, jd['주문가능수량'], 0, self.realType.SENDTYPE['거래구분']['시장가'], ""]
                     )
-                    
+
                     if order_success == 0:
                         self.logging.logger.debug("매도주문 전달 성공")
                     else:
                         self.logging.logger.debug("매도주문 전달 실패")
 
-            # 등록율이 2.0% 이상이고 오늘 산 잔고에 없을 경우
+
             elif d > 2.0 and sCode not in self.jango_dict:
-                self.logging.logger.debug("%s %s" % ("신규매수를 한다. ", sCode))
+                print("매수조건 통과 %s" % sCode)
 
                 result = (self.use_money * 0.1) / e
                 quantity = int(result)
 
-                order_success = self.dynamicCall(
-                    "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
-                    ["신규매수", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 1,
-                     sCode, quantity, e, self.realType.SENDTYPE['거래구분']['지정가'], ""]
+                order_success = self.dynamicCall("SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)"
+                                                 , ["신규매수", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 1
+                                                     , sCode, quantity, e, self.realType.SENDTYPE['거래구분']['지정가'], ""]
                 )
-                
+
                 if order_success == 0:
                     self.logging.logger.debug("매수주문 전달 성공")
                 else:
@@ -594,30 +599,29 @@ class Kiwoom(QAxWidget):
             not_meme_list = list(self.not_account_stock_dict)
 
             for order_num in not_meme_list:
-                code            = self.not_account_stock_dict[order_num]["종목코드"]
-                meme_price      = self.not_account_stock_dict[order_num]['주문가격']
-                not_quantity    = self.not_account_stock_dict[order_num]['미체결수량']
-                order_gubun     = self.not_account_stock_dict[order_num]['주문구분']
+                code        = self.not_account_stock_dict[order_num]["종목코드"]
+                meme_price  = self.not_account_stock_dict[order_num]['주문가격']
+                not_quantity= self.not_account_stock_dict[order_num]['미체결수량']
+                order_gubun = self.not_account_stock_dict[order_num]['주문구분']
 
-                if order_gubun == "신규매수" and not_quantity > 0 and e > meme_price:
-                    self.logging.logger.debug("%s %s " % ("매수취소 한다"), sCode)
+                if order_gubun == "매수" and not_quantity > 0 and e > meme_price:
                     order_success = self.dynamicCall(
                         "SendOrder(QString, QString, QString, int, QString, int, int, QString, QString)",
                         ["매수취소", self.portfolio_stock_dict[sCode]['주문용스크린번호'], self.account_num, 3,
-                            code, 0, 0, self.realType.SENDTYPE['거래구분']['지정가'], order_num]
+                         code, 0, 0, self.realType.SENDTYPE['거래구분']['지정가'], order_num]
                     )
-                    
+
                     if order_success == 0:
                         self.logging.logger.debug("매수취소 전달 성공")
                     else:
                         self.logging.logger.debug("매수취소 전달 실패")
 
-                elif not_quantity == 0 :
+                elif not_quantity == 0:
                     del self.not_account_stock_dict[order_num]
 
     def chejan_slot(self, sGubun, nItemCnt, sFIdList):
 
-        if int(sGubun) == "0":       # 주문체결
+        if int(sGubun) == "0":       # 주문체결(주문 넣은게 체결 될때마다 불려와짐)
             self.logging.logger.debug("주문체결 등록한다.")
             account_num     = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['주문체결']['계좌번호'])
             sCode           = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['주문체결']['종목코드'])[1:]
@@ -681,7 +685,7 @@ class Kiwoom(QAxWidget):
 
             print(self.not_account_stock_dict)
 
-        elif int(sGubun) == "1":      # 변경된 잔고내역 데이터 받기
+        elif int(sGubun) == "1":      # 잔고(주문체결이 불려와지고 이어서 잔고가 불러와짐)
             self.logging.logger.debug("잔고 등록한다.")
             account_num     = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['계좌번호'])
             sCode           = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['종목코드'])[1:]
@@ -690,7 +694,7 @@ class Kiwoom(QAxWidget):
             stock_quan      = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['보유수량'])
             like_quan       = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['주문가능수량'])
             buy_price       = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['매입단가'])
-            total_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['총매입가'])
+            total_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['총매입가'])  #계좌에 있는 종목의 총매입가
             meme_gubun      = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['매도매수구분'])
             first_sell_price = self.dynamicCall("GetChejanData(int)",self.realType.REALTYPE['잔고']['(최우선)매도호가'])
             first_buy_price = self.dynamicCall("GetChejanData(int)", self.realType.REALTYPE['잔고']['(최우선)매수호가'])
