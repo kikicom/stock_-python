@@ -1,3 +1,8 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+
+# 제외소스  #
+*.log
+*.pyc
+*.project
