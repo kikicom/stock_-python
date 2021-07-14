@@ -6,6 +6,7 @@ from config.errorCode import *
 from PyQt5.QtTest import *
 from config.kiwoomType import *
 from config.log_class import *      # 로그 파일 임포트
+from config.slack import *
 
 class Kiwoom(QAxWidget):
     def __init__(self):
@@ -14,6 +15,7 @@ class Kiwoom(QAxWidget):
 
         self.realType   = RealType()
         self.logging    = Logging()     # 로그 인스턴스
+        self.slack      = Slack()       # 슬랙동작
 
         self.logging.logger.debug("Kiwoom() class start.")
 
@@ -85,6 +87,7 @@ class Kiwoom(QAxWidget):
             self.logging.logger.debug("실시간 등록 : %s, 스크린번호 : %s  , 번호 : %s " %  (code, screen_num, fids))
 
        # self.not_concluded_account() # 미체결 요청하기
+        self.slack.notification(pretext="주식자동화", title="주식자동화2", fallback="주식자동화3", text="주식자동화 프로그램이 동작 되었습니다.")
 
     def get_ocx_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")        # 레지스트리에 저장된 API 모듈 불러오기
