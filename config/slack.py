@@ -5,15 +5,14 @@ class Slack():
         self.token = 'xoxb-2257324003063-2272279572627-pokjoriZAUtbkVk4h0RR2RcJ'
         
     def notification(self, pretext=None, title=None, fallback=None, text=None):
-        attachments_dist    = dist()
-        attachments_dist['pretext'] = pretext   #kikicom1
-        attachments_dist['title']   = title     #kikicom2
-        attachments_dist['fallback']=fallback   #kikicom3
-        attachments_dist['text']    = text      #kikicom3
+        attachments_dict    = dict()
+        attachments_dict['pretext'] = pretext   #test1
+        attachments_dict['title']   = title     #test2
+        attachments_dict['fallback']= fallback  #test3
+        attachments_dict['text']    = text      #test4
         
-        attachments     = [attachments_dist]
+        attachments     = [attachments_dict]
         
         slack = Slacker(self.token)
         
         slack.chat.post_message(channel='#kikicom', text=None, attachments=attachments, as_user=None)
-        

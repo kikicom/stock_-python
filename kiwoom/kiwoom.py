@@ -6,7 +6,7 @@ from config.errorCode import *
 from PyQt5.QtTest import *
 from config.kiwoomType import *
 from config.log_class import *      # 로그 파일 임포트
-from config.slack import *
+#from config.slack import *
 
 class Kiwoom(QAxWidget):
     def __init__(self):
@@ -15,7 +15,7 @@ class Kiwoom(QAxWidget):
 
         self.realType   = RealType()
         self.logging    = Logging()     # 로그 인스턴스
-        self.slack      = Slack()       # 슬랙동작
+        #        self.slack      = Slack()       # 슬랙동작
 
         self.logging.logger.debug("Kiwoom() class start.")
 
@@ -34,6 +34,7 @@ class Kiwoom(QAxWidget):
         self.use_money_percent = 0.5            # 예수금에서 실제 사용할 비율
         self.output_deposit = 0                 # 출력가능 금액
         self.account_pwd = "0000"                #
+        self.total_buy_money    = 0
         self.total_profit_loss_money = 0        # 총평가손익금액
         self.total_profit_loss_rate  = 0        # 총수익률(%)
         self.jango_dict = {}
@@ -87,7 +88,7 @@ class Kiwoom(QAxWidget):
             self.logging.logger.debug("실시간 등록 : %s, 스크린번호 : %s  , 번호 : %s " %  (code, screen_num, fids))
 
        # self.not_concluded_account() # 미체결 요청하기
-        self.slack.notification(pretext="주식자동화", title="주식자동화2", fallback="주식자동화3", text="주식자동화 프로그램이 동작 되었습니다.")
+       # self.slack.notification(pretext="주식자동화", title="주식자동화2", fallback="주식자동화3", text="주식자동화 프로그램이 동작 되었습니다.")
 
     def get_ocx_instance(self):
         self.setControl("KHOPENAPI.KHOpenAPICtrl.1")        # 레지스트리에 저장된 API 모듈 불러오기
@@ -162,21 +163,20 @@ class Kiwoom(QAxWidget):
             self.use_money = self.use_money / 4                         # 사용금액 4종목으로 나눔
             output_deposit = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "출금가능금액" )
             self.output_deposit = int(output_deposit)
-            self.logging.logger.debug("예수금 : %s   ====   출금가능금액 %s" % (self.deposit , self.use_money , self.output_deposit ))
-
+            self.logging.logger.debug("예수금 : %s === 사용가능금액 %s ====   출금가능금액 %s" % (self.deposit , self.use_money , self.output_deposit ))
             self.stop_screen_cancel(self.screen_my_info)
             self.detail_account_info_event_loop.exit()
             self.logging.logger.debug("======예수금을 요청하는 부분=================== 종료")
 
         elif sRQName == "계좌평가잔고내역요청":
 
-            total_buy_money         = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총매입금액" )
+            total_buy_money = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총매입금액" )
             total_profit_loss_money = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총평가손익금액" )
             total_profit_loss_rate  = self.dynamicCall("GetCommData(String, String, int, String)", sTrCode, sRQName, 0, "총수익률(%)" )
-            self.total_buy_money            = int(total_buy_money)
+            self.total_buy_money = int(total_buy_money)
             self.total_profit_loss_money    = int(total_profit_loss_money)
             self.total_profit_loss_rate     = float(total_profit_loss_rate)
-            self.logging.logger.debug("계좌평가잔고내역요청 싱글데이터(총매입금액, 총평가손익금액, 총수익률(%)) : %s -  %s - %s " % (self.total_buy_money, self.total_profit_loss_money,  self.total_profit_loss_rate))
+            self.logging.logger.debug("계좌평가잔고내역요청 싱글데이터 총매입금액, 총평가손익금액, 총수익률 : %s -  %s - %s " % ( self.total_buy_money, self.total_profit_loss_money, self.total_profit_loss_rate))
 
             # 20개까지 조회 가능
             rows = self.dynamicCall("GetRepeatCnt(QString, QString", sTrCode, sRQName)
